@@ -1,7 +1,6 @@
 #pragma once
 
 #include <bit>
-#include <bitset>
 #include <cassert>
 #include <concepts>
 #include <cstdint>
@@ -18,11 +17,6 @@
 #include "ChunkedArray.hpp"
 
 namespace entable {
-	template <typename>
-	struct UserConfig;
-
-	struct Entity;
-
 	static constexpr size_t DEFAULT_DENSE_CHUNK_SIZE = 1024;
 }
 
@@ -128,16 +122,6 @@ namespace utils {
 	// Concept for unique types in a type_list
 	template<typename TypeList>
 	concept UniqueTypes = all_types_unique_v<TypeList>;
-
-	template <typename T>
-	concept HasUserConfigEntityChunkSize = requires {
-		{ UserConfig<T>::EntityChunkSize } -> std::convertible_to<std::size_t>;
-	};
-
-	template <typename T>
-	concept HasUserConfigChunkSize = requires {
-		{ UserConfig<T>::ChunkSize } -> std::convertible_to<std::size_t>;
-	};
 }
 
 namespace entable {
