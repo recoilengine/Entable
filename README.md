@@ -52,7 +52,7 @@ sudo apt-get install cmake g++ clang
 
 ```bash
 # Clone the repository
-git clone https://github.com/recoilengine/Entable.git
+git clone https://github.com/RecoilEngine/Entable.git
 cd Entable
 
 # Create build directory
