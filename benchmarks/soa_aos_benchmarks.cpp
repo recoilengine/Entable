@@ -7,12 +7,6 @@
 #include <type_traits>
 #include <vector>
 
-// Provide a default UserConfig so Entable trait probes are well-formed for local benchmark types.
-namespace entable {
-template <typename T>
-struct UserConfig {};
-}
-
 #include <Entable.hpp>
 
 namespace ent = entable;

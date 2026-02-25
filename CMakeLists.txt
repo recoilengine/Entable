@@ -40,6 +40,17 @@ if(ENTABLE_BUILD_TESTS)
   FetchContent_MakeAvailable(Catch2)
 endif()
 
+# Flecs ECS library (header-only)
+FetchContent_Declare(
+  flecs
+  GIT_REPOSITORY https://github.com/SanderMertens/flecs.git
+  GIT_TAG v4.1.4
+)
+set(FLECS_BUILD_CPP OFF CACHE BOOL "" FORCE)
+set(FLECS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(FLECS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(flecs)
+
 # Header-only Entable: create interface library so benchmarks can include it
 add_library(entable INTERFACE)
 target_include_directories(entable INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -59,6 +70,10 @@ target_link_libraries(chunked_array_benchmarks PRIVATE entable benchmark::benchm
 # Benchmark executable: SoA (Registry) vs AoS (aggregate vector)
 add_executable(entable_benchmarks benchmarks/soa_aos_benchmarks.cpp)
 target_link_libraries(entable_benchmarks PRIVATE entable benchmark::benchmark benchmark::benchmark_main)
+
+# Benchmark executable: Entable vs Flecs ECS comparison
+add_executable(flecs_benchmarks benchmarks/flecs_benchmarks.cpp)
+target_link_libraries(flecs_benchmarks PRIVATE entable flecs::flecs_static benchmark::benchmark benchmark::benchmark_main)
 
 # Test executable: Catch2 tests for ChunkedArray
 if(ENTABLE_BUILD_TESTS)

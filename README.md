@@ -82,6 +82,9 @@ ctest --output-on-failure -C Release
 
 # Run SoA vs AoS benchmarks
 ./build/entable_benchmarks
+
+# Run Entable vs Flecs benchmarks
+./build/flecs_benchmarks
 ```
 
 ## Project Structure
@@ -123,5 +126,8 @@ This project is **mostly LLM coded, but with human supervision**. The core desig
 Benchmarks compare:
 - `ChunkedArray` vs `std::vector` for typical use cases
 - SoA (Structure of Arrays) vs AoS (Array of Structures) data layouts
+- Entable vs Flecs ECS implementations
+
+Detailed benchmark results are available in [Benchmark.md](Benchmark.md).
 
 Run the benchmarks to see performance results on your hardware.
