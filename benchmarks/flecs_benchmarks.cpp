@@ -275,8 +275,8 @@ static void BM_Flecs_Iterate_2Components(benchmark::State& state) {
             .set<FC2>({1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0});
     }
     double sum = 0;
+    auto query = world.query<FC1, FC2>();
     for (auto _ : state) {
-        auto query = world.query<FC1, FC2>();
         query.each([&](flecs::entity e, FC1& c1, FC2& c2) {
             (void)e;
             sum += c1.a + c1.b + c2.a + c2.b;
@@ -330,8 +330,8 @@ static void BM_Flecs_Iterate_4Components(benchmark::State& state) {
             .set<FC4>({1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0});
     }
     double sum = 0;
+    auto query = world.query<FC1, FC2, FC3, FC4>();
     for (auto _ : state) {
-        auto query = world.query<FC1, FC2, FC3, FC4>();
         query.each([&](flecs::entity e, FC1& c1, FC2& c2, FC3& c3, FC4& c4) {
             (void)e;
             sum += c1.a + c2.a + c3.a + c4.a;
@@ -399,8 +399,8 @@ static void BM_Flecs_Iterate_8Components(benchmark::State& state) {
             .set<FC8>({1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0});
     }
     double sum = 0;
+    auto query = world.query<FC1, FC2, FC3, FC4, FC5, FC6, FC7, FC8>();
     for (auto _ : state) {
-        auto query = world.query<FC1, FC2, FC3, FC4, FC5, FC6, FC7, FC8>();
         query.each([&](flecs::entity e, FC1& c1, FC2& c2, FC3& c3, FC4& c4,
             FC5& c5, FC6& c6, FC7& c7, FC8& c8) {
             (void)e;
