@@ -44,26 +44,30 @@ endif()
 add_library(entable INTERFACE)
 target_include_directories(entable INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
+# Treat warnings as errors for all targets
+# MSVC: /W4 for warnings, /WX to treat as errors
+# Other compilers: -Wall -Wextra -Werror
+target_compile_options(entable INTERFACE
+  $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
+  $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Werror>
+)
+
 # Benchmark executable: ChunkedArray vs std::vector (normal types only)
 add_executable(chunked_array_benchmarks benchmarks/vector_benchmarks.cpp)
 target_link_libraries(chunked_array_benchmarks PRIVATE entable benchmark::benchmark benchmark::benchmark_main)
-target_compile_options(chunked_array_benchmarks PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/W4> $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra>)
 
 # Benchmark executable: SoA (Registry) vs AoS (aggregate vector)
 add_executable(entable_benchmarks benchmarks/soa_aos_benchmarks.cpp)
 target_link_libraries(entable_benchmarks PRIVATE entable benchmark::benchmark benchmark::benchmark_main)
-target_compile_options(entable_benchmarks PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/W4> $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra>)
 
 # Test executable: Catch2 tests for ChunkedArray
 if(ENTABLE_BUILD_TESTS)
   add_executable(chunked_array_tests tests/ChunkedArray_tests.cpp)
   target_link_libraries(chunked_array_tests PRIVATE entable Catch2::Catch2WithMain)
-  target_compile_options(chunked_array_tests PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/W4> $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra>)
 
   # Test executable: Catch2 tests for Entable Registry
   add_executable(entable_tests tests/Entable_tests.cpp)
   target_link_libraries(entable_tests PRIVATE entable Catch2::Catch2WithMain)
-  target_compile_options(entable_tests PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/W4> $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra>)
 
   enable_testing()
   add_test(NAME chunked_array_tests COMMAND chunked_array_tests)
