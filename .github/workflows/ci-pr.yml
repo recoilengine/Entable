@@ -1,44 +1,16 @@
-name: CI
+name: CI (Pull Request)
 
 on:
-  push:
-    branches:
-      - master
   pull_request:
     branches:
       - master
 
 env:
-  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
 
 jobs:
-  # Job for master branch pushes - builds with default compiler (g++ on Ubuntu)
-  build-master:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Configure CMake
-      run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
-
-    - name: Build
-      run: cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }}
-
-    - name: Build benchmarks
-      run: |
-        cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target chunked_array_benchmarks
-        cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target entable_benchmarks
-
-    - name: Run tests
-      run: ctest --output-on-failure -C ${{ env.BUILD_TYPE }}
-
-  # Job for PRs - builds with clang, g++, and MSVC
+  # PR builds with g++ and Clang on Ubuntu
   build-pr:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -70,11 +42,10 @@ jobs:
         cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target entable_benchmarks
 
     - name: Run tests
-      run: ctest --output-on-failure -C ${{ env.BUILD_TYPE }}
+      run: ctest --output-on-failure -C ${{ env.BUILD_TYPE }} --test-dir ${{ github.workspace }}/build
 
   # MSVC build for PRs
   build-msvc-pr:
-    if: github.event_name == 'pull_request'
     runs-on: windows-latest
 
     steps:
@@ -93,4 +64,4 @@ jobs:
         cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target entable_benchmarks
 
     - name: Run tests
-      run: ctest --output-on-failure -C ${{ env.BUILD_TYPE }} -V
+      run: ctest --output-on-failure -C ${{ env.BUILD_TYPE }} --test-dir ${{ github.workspace }}/build -V
