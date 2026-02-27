@@ -678,3 +678,87 @@ TEST_CASE("Registry: Destroy N of M entities and recreate", "[Registry][DestroyR
         }
     }
 }
+
+TEST_CASE("Registry: ShrinkToFit reduces memory footprint", "[Registry][ShrinkToFit]")
+{
+    struct Position {
+        float x, y, z;
+    };
+    struct Velocity {
+        float vx, vy, vz;
+    };
+
+    using Reg = ent::Registry<ent::type_list_t<Position, Velocity>>;
+    Reg reg;
+
+    SECTION("ShrinkToFit after destroying entities")
+    {
+        // Create 2000 entities with components
+        const size_t initialCount = 2000;
+        std::vector<ent::Entity> entities;
+        entities.reserve(initialCount);
+        for (size_t i = 0; i < initialCount; ++i) {
+            auto e = reg.CreateEntity();
+            reg.Set<Position>(e, static_cast<float>(i), static_cast<float>(i + 1), static_cast<float>(i + 2));
+            reg.Set<Velocity>(e, static_cast<float>(i * 0.1f), static_cast<float>(i * 0.2f), static_cast<float>(i * 0.3f));
+            entities.push_back(e);
+        }
+        REQUIRE(reg.Size() == initialCount);
+
+        // Destroy 1500 entities (leaving 500)
+        const size_t remainingCount = 500;
+        for (size_t i = remainingCount; i < initialCount; ++i) {
+            reg.DestroyEntity(entities[i]);
+        }
+        REQUIRE(reg.Size() == remainingCount);
+
+        // ShrinkToFit should reduce memory without losing data
+        reg.ShrinkToFit();
+
+        // Verify remaining entities still have valid data
+        for (size_t i = 0; i < remainingCount; ++i) {
+            auto e = entities[i];
+            REQUIRE(reg.IsValidEntity(e));
+            auto& pos = reg.Get<Position>(e);
+            REQUIRE(pos.x == static_cast<float>(i));
+            REQUIRE(pos.y == static_cast<float>(i + 1));
+            REQUIRE(pos.z == static_cast<float>(i + 2));
+            auto& vel = reg.Get<Velocity>(e);
+            REQUIRE(vel.vx == static_cast<float>(i * 0.1f));
+        }
+
+        // Registry size should still be correct
+        REQUIRE(reg.Size() == remainingCount);
+    }
+
+    SECTION("ShrinkToFit on empty registry")
+    {
+        reg.ShrinkToFit(); // Should not crash
+        REQUIRE(reg.Size() == 0);
+    }
+
+    SECTION("ShrinkToFit after clearing all entities")
+    {
+        // Create some entities
+        for (int i = 0; i < 100; ++i) {
+            auto e = reg.CreateEntity();
+            reg.Set<Position>(e, 1.0f, 2.0f, 3.0f);
+        }
+        REQUIRE(reg.Size() == 100);
+
+        // Clear all
+        reg.Clear();
+        REQUIRE(reg.Size() == 0);
+
+        // ShrinkToFit should work after clear
+        reg.ShrinkToFit();
+        REQUIRE(reg.Size() == 0);
+
+        // Can create new entities after ShrinkToFit
+        auto e = reg.CreateEntity();
+        reg.Set<Position>(e, 5.0f, 6.0f, 7.0f);
+        REQUIRE(reg.IsValidEntity(e));
+        auto& pos = reg.Get<Position>(e);
+        REQUIRE(pos.x == 5.0f);
+    }
+}

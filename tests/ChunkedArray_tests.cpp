@@ -288,6 +288,34 @@ TEST_CASE("ChunkedArray<int>: shrink_to_fit", "[ChunkedArray][non-empty][shrink_
         chunked.shrink_to_fit();
         REQUIRE(chunked.empty());
     }
+
+    SECTION("Shrink after pop_back many elements")
+    {
+        // Add 1000 elements
+        for (int i = 0; i < 1000; ++i) {
+            chunked.push_back(i);
+        }
+        REQUIRE(chunked.size() == 1000);
+        REQUIRE(chunked.chunk_count() == 4);  // ceil(1000/256) = 4
+
+        // Remove 750 elements (leaving 250)
+        for (int i = 0; i < 750; ++i) {
+            chunked.pop_back();
+        }
+        REQUIRE(chunked.size() == 250);
+        // Still using 4 chunks until we shrink
+        REQUIRE(chunked.chunk_count() == 4);
+
+        // Shrink should reduce to 1 chunk
+        chunked.shrink_to_fit();
+        REQUIRE(chunked.size() == 250);
+        REQUIRE(chunked.chunk_count() == 1);  // ceil(250/256) = 1
+
+        // Verify data is still correct
+        for (int i = 0; i < 250; ++i) {
+            REQUIRE(chunked[i] == i);
+        }
+    }
 }
 
 TEST_CASE("ChunkedArray<int>: back() and pop_back()", "[ChunkedArray][non-empty][back][pop_back]")

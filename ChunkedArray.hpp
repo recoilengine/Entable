@@ -365,6 +365,7 @@ namespace entable {
             }
             const size_t numChunksNeeded = MyChunkHelper::ChunkIndex(elemCount - 1) + 1;
             chunks.resize(numChunksNeeded);
+			chunks.shrink_to_fit();
             update_write_ptr();
         }
 

@@ -277,6 +277,10 @@ namespace entable {
 			indexToSlot.clear();
 		}
 
+		void ShrinkToFit() noexcept {
+			data.shrink_to_fit();
+		}
+
 		[[nodiscard]] const MyStoredType* GetPointerAt(size_t slot) const noexcept {
 			return &data[slot];
 		}
@@ -674,6 +678,14 @@ namespace entable {
 			entities.clear();
 			fNext = EntityTraits::INVALID_INDEX;
 			fSize = 0;
+		}
+
+		// Shrinks all dense component storages to fit their current size.
+		// This only applies to component data storages, not the EntitiesStorage.
+		// For contiguous storage (CHUNK_SIZE=0), uses std::vector::shrink_to_fit().
+		// For chunked storage (CHUNK_SIZE>0), uses ChunkedArray::shrink_to_fit().
+		void ShrinkToFit() noexcept {
+			for_each_tuple([](auto& s) { s.ShrinkToFit(); }, storages);
 		}
 
 		// Returns the number of live entities (total slots minus free slots)
