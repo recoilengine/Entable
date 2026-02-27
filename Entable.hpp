@@ -285,7 +285,7 @@ namespace entable {
 			return &data[slot];
 		}
 
-		[[nodiscard]] auto GetDataSpan() noexcept {
+		[[nodiscard]] auto GetDataSpans() noexcept {
 			std::vector<std::span<MyStoredType>> result;
 			if constexpr (IsContiguous) {
 				// For contiguous storage (std::vector), emulate chunks of DEFAULT_DENSE_CHUNK_SIZE
@@ -315,7 +315,7 @@ namespace entable {
 			return result;
 		}
 
-		[[nodiscard]] auto GetDataSpan() const noexcept {
+		[[nodiscard]] auto GetDataSpans() const noexcept {
 			std::vector<std::span<const MyStoredType>> result;
 			if constexpr (IsContiguous) {
 				// For contiguous storage (std::vector), emulate chunks of DEFAULT_DENSE_CHUNK_SIZE
@@ -646,14 +646,14 @@ namespace entable {
 		[[nodiscard]] auto Components() noexcept
 			requires UniqueTypes<TypesList>
 		{
-			return GetStorage<C>().GetDataSpan();
+			return GetStorage<C>().GetDataSpans();
 		}
 
 		template<typename C>
 		[[nodiscard]] auto Components() const noexcept
 			requires UniqueTypes<TypesList>
 		{
-			return GetStorage<C>().GetDataSpan();
+			return GetStorage<C>().GetDataSpans();
 		}
 
 		// -----------------------------------------------------------------
@@ -662,12 +662,12 @@ namespace entable {
 		// -----------------------------------------------------------------
 		template<size_t I>
 		[[nodiscard]] auto ComponentsByIndex() noexcept {
-			return std::get<I>(storages).GetDataSpan();
+			return std::get<I>(storages).GetDataSpans();
 		}
 
 		template<size_t I>
 		[[nodiscard]] auto ComponentsByIndex() const noexcept {
-			return std::get<I>(storages).GetDataSpan();
+			return std::get<I>(storages).GetDataSpans();
 		}
 
 		// -----------------------------------------------------------------
