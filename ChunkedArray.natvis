@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <!-- ChunkHelper template -->
+  <Type Name="entable::ChunkHelper&lt;*&gt;">
+    <DisplayString>CHUNK_SIZE={$T1}, LOG2={LOG2}, MASK={MASK}</DisplayString>
+    <Expand>
+      <Item Name="CHUNK_SIZE">$T1</Item>
+      <Item Name="LOG2">LOG2</Item>
+      <Item Name="MASK">MASK</Item>
+    </Expand>
+  </Type>
+
+  <!-- ChunkedArray<T, CHUNK_SIZE> -->
+  <Type Name="entable::ChunkedArray&lt;*,*&gt;">
+    <DisplayString>ChunkedArray({elemCount} elements, {chunks._Mypair._Myval2._Mylast - chunks._Mypair._Myval2._Myfirst} chunks)</DisplayString>
+    <Expand>
+      <Item Name="[size]">elemCount</Item>
+      <Item Name="[chunk_count]">chunks._Mypair._Myval2._Mylast - chunks._Mypair._Myval2._Myfirst</Item>
+      <Item Name="[CHUNK_SIZE]">$T2</Item>
+
+      <CustomListItems MaxItemsPerView="5000">
+        <Variable Name="total"     InitialValue="elemCount"/>
+        <Variable Name="globalIdx" InitialValue="(size_t)0"/>
+        <Loop>
+          <If Condition="globalIdx >= total"><Break/></If>
+          <Item Name="[{globalIdx}]">
+            (($T1*)(chunks._Mypair._Myval2._Myfirst[globalIdx / $T2]._Mypair._Myval2))[globalIdx % $T2]
+          </Item>
+          <Exec>globalIdx++</Exec>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+
+</AutoVisualizer>

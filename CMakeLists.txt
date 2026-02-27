@@ -88,3 +88,29 @@ if(ENTABLE_BUILD_TESTS)
   add_test(NAME chunked_array_tests COMMAND chunked_array_tests)
   add_test(NAME entable_tests COMMAND entable_tests)
 endif()
+
+if(MSVC)
+  set(NATVIS_FILE "${CMAKE_CURRENT_SOURCE_DIR}/ChunkedArray.natvis")
+
+  set(NATVIS_TARGETS
+    chunked_array_benchmarks
+    entable_benchmarks
+    flecs_benchmarks
+  )
+
+  if(ENTABLE_BUILD_TESTS)
+    list(APPEND NATVIS_TARGETS chunked_array_tests entable_tests)
+  endif()
+
+  foreach(target ${NATVIS_TARGETS})
+    if(TARGET ${target})
+      # Works automatically with the Visual Studio generator
+      target_sources(${target} PRIVATE "${NATVIS_FILE}")
+
+      # Also embed into PDB for Ninja + MSVC builds
+      target_link_options(${target} PRIVATE "/NATVIS:${NATVIS_FILE}")
+    endif()
+  endforeach()
+
+  message(STATUS "Natvis: ${NATVIS_FILE} registered for all targets")
+endif()
