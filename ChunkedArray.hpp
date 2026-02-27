@@ -359,11 +359,7 @@ namespace entable {
         }
 
         void shrink_to_fit() {
-            if (elemCount == 0) [[unlikely]] {
-                clear();
-                return;
-            }
-            const size_t numChunksNeeded = MyChunkHelper::ChunkIndex(elemCount - 1) + 1;
+            const size_t numChunksNeeded = elemCount > 0 ? MyChunkHelper::ChunkIndex(elemCount - 1) + 1 : 0;
             chunks.resize(numChunksNeeded);
 			chunks.shrink_to_fit();
             update_write_ptr();
