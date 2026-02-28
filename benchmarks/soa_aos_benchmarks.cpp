@@ -22,7 +22,7 @@ struct C6 { double a = 0, b = 0, c = 0, d = 0; };
 struct C7 { double a = 0, b = 0, c = 0, d = 0; };
 struct C8 { double a = 0, b = 0, c = 0, d = 0; };
 
-using SoARegistry = ent::Registry<ent::type_list_t<C1, C2, C3, C4, C5, C6, C7, C8>>;
+using SoARegistry = ent::RegistryWithDefaultChunkSize<C1, C2, C3, C4, C5, C6, C7, C8>;
 
 struct EntityData {
     C1 c1;

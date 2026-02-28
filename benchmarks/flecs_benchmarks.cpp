@@ -39,16 +39,16 @@ static_assert(sizeof(EC1) >= 56 && sizeof(EC1) <= 64, "EC1 should be ~56-64 byte
 static_assert(sizeof(EC8) >= 56 && sizeof(EC8) <= 64, "EC8 should be ~56-64 bytes");
 
 // Entable registry with 8 components (compile-time)
-using EntableRegistry8 = ent::Registry<ent::type_list_t<EC1, EC2, EC3, EC4, EC5, EC6, EC7, EC8>>;
+using EntableRegistry8 = ent::RegistryWithDefaultChunkSize<EC1, EC2, EC3, EC4, EC5, EC6, EC7, EC8>;
 
 // Entable registry with 4 components
-using EntableRegistry4 = ent::Registry<ent::type_list_t<EC1, EC2, EC3, EC4>>;
+using EntableRegistry4 = ent::RegistryWithDefaultChunkSize<EC1, EC2, EC3, EC4>;
 
 // Entable registry with 2 components
-using EntableRegistry2 = ent::Registry<ent::type_list_t<EC1, EC2>>;
+using EntableRegistry2 = ent::RegistryWithDefaultChunkSize<EC1, EC2>;
 
 // Entable registry with 1 component
-using EntableRegistry1 = ent::Registry<ent::type_list_t<EC1>>;
+using EntableRegistry1 = ent::RegistryWithDefaultChunkSize<EC1>;
 
 // ============================================================================
 // Flecs components (runtime definition) - structs must be plain data

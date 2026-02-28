@@ -63,26 +63,6 @@ namespace utils {
 		}, std::forward<TupleT>(tp));
 	}
 
-	template<typename... Type>
-	struct type_list_t {
-		using type = type_list_t;
-		static constexpr auto size = sizeof...(Type);
-	};
-
-	template<typename... Type>
-	static constexpr type_list_t<Type...> type_list{};
-
-	template<typename T, typename TypeList>
-	struct type_in_list;
-
-	template<typename T, typename... Types>
-	struct type_in_list<T, type_list_t<Types...>> {
-		static constexpr bool value = (std::is_same_v<T, Types> || ...);
-	};
-
-	template<typename T, typename TypeList>
-	constexpr bool type_in_list_v = type_in_list<T, TypeList>::value;
-
 	// -------------------------------------------------------------------------
 	// Get first type from a parameter pack
 	// -------------------------------------------------------------------------
@@ -104,24 +84,24 @@ namespace utils {
 	constexpr size_t FirstIndex = FirstIndexImpl<Is...>;
 
 	// -------------------------------------------------------------------------
-	// Check if all types in a type_list are unique
+	// Check if all types in a parameter pack are unique
 	// -------------------------------------------------------------------------
-	template<typename TypeList>
+	template<typename... Ts>
 	struct all_types_unique;
 
 	template<>
-	struct all_types_unique<type_list_t<>> : std::true_type {};
+	struct all_types_unique<> : std::true_type {};
 
 	template<typename T, typename... Ts>
-	struct all_types_unique<type_list_t<T, Ts...>>
-		: std::conjunction<std::negation<std::is_same<T, Ts>>..., all_types_unique<type_list_t<Ts...>>> {};
+	struct all_types_unique<T, Ts...>
+		: std::conjunction<std::negation<std::is_same<T, Ts>>..., all_types_unique<Ts...>> {};
 
-	template<typename TypeList>
-	constexpr bool all_types_unique_v = all_types_unique<TypeList>::value;
+	template<typename... Ts>
+	constexpr bool all_types_unique_v = all_types_unique<Ts...>::value;
 
-	// Concept for unique types in a type_list
-	template<typename TypeList>
-	concept UniqueTypes = all_types_unique_v<TypeList>;
+	// Concept for unique types in a parameter pack
+	template<typename... Ts>
+	concept UniqueTypes = all_types_unique_v<Ts...>;
 }
 
 namespace entable {
@@ -190,13 +170,13 @@ namespace entable {
 		return (EntityToVersion(entity) + 1u) & EntityTraits::VERSION_MASK;
 	}
 
-	template <typename TypeList, size_t CHUNK_SIZE = DEFAULT_DENSE_CHUNK_SIZE>
+	template <auto CHUNK_SIZE = DEFAULT_DENSE_CHUNK_SIZE, typename... Cs>
 	class Registry;
 
 	template <typename TypedRegistry, typename T>
 	class ComponentStorage {
 	public:
-		template<typename TypeList, size_t CHUNK_SIZE>
+		template<auto CHUNK_SIZE2, typename... Cs2>
 		friend class Registry;
 
 		using MyStoredType = T;
@@ -365,14 +345,11 @@ namespace entable {
 	// -------------------------------------------------------------------------
 	// Registry
 	// -------------------------------------------------------------------------
-	template<typename TypeList, size_t CHUNK_SIZE>
-	class Registry;
-
-	template<typename... Cs, size_t CHUNK_SIZE>
-	class Registry<type_list_t<Cs...>, CHUNK_SIZE> {
+	template<auto CHUNK_SIZE, typename... Cs>
+	class Registry {
 	public:
-		using Self = Registry<type_list_t<Cs...>, CHUNK_SIZE>;
-		using TypesList = type_list_t<Cs...>;
+		using Self = Registry<CHUNK_SIZE, Cs...>;
+		using TypesList = std::tuple<Cs...>;
 		using StoragesTuple = std::tuple<ComponentStorage<Self, Cs>...>;
 		static constexpr size_t ChunkSize = CHUNK_SIZE;
 		static constexpr bool IsContiguous = (CHUNK_SIZE == 0);
@@ -461,14 +438,14 @@ namespace entable {
 
 		template<typename C, typename... Args>
 		void Set(Entity entity, Args&&... args)
-			requires UniqueTypes<TypesList>
+			requires UniqueTypes<Cs...>
 		{
 			GetStorage<C>().Set(EntityToIndex(entity), std::forward<Args>(args)...);
 		}
 
 		template<typename C, typename... Args>
 		void SetSafe(Entity entity, Args&&... args)
-			requires UniqueTypes<TypesList>
+			requires UniqueTypes<Cs...>
 		{
 			CheckEntity(entity);
 			GetStorage<C>().Set(EntityToIndex(entity), std::forward<Args>(args)...);
@@ -476,66 +453,66 @@ namespace entable {
 
 		template<typename C>
 		[[nodiscard]] decltype(auto) Get(Entity entity)
-			requires UniqueTypes<TypesList>
+			requires UniqueTypes<Cs...>
 		{
 			return GetStorage<C>().Get(EntityToIndex(entity));
 		}
 
 		template<typename C>
 		[[nodiscard]] decltype(auto) Get(Entity entity) const
-			requires UniqueTypes<TypesList>
+			requires UniqueTypes<Cs...>
 		{
 			return GetStorage<C>().Get(EntityToIndex(entity));
 		}
 
 		template<typename... Cts>
-		[[nodiscard]] decltype(auto) Get(Entity entity) requires MoreThanOneType<Cts...> && UniqueTypes<TypesList> {
+		[[nodiscard]] decltype(auto) Get(Entity entity) requires MoreThanOneType<Cts...> && UniqueTypes<Cs...> {
 			const auto idx = EntityToIndex(entity);
 			return std::forward_as_tuple(GetStorage<Cts>().Get(idx)...);
 		}
 
 		template<typename... Cts>
-		[[nodiscard]] decltype(auto) Get(Entity entity) const requires MoreThanOneType<Cts...> && UniqueTypes<TypesList> {
+		[[nodiscard]] decltype(auto) Get(Entity entity) const requires MoreThanOneType<Cts...> && UniqueTypes<Cs...> {
 			const auto idx = EntityToIndex(entity);
 			return std::forward_as_tuple(GetStorage<Cts>().Get(idx)...);
 		}
 
 		template<typename... Cts>
 		[[nodiscard]] decltype(auto) GetNonEmpty(Entity entity)
-			requires UniqueTypes<TypesList>
+			requires UniqueTypes<Cs...>
 		{
 			return std::tuple_cat(ForwardNonEmpty<Cts>(entity)...);
 		}
 
 		template<typename... Cts>
 		[[nodiscard]] decltype(auto) GetNonEmpty(Entity entity) const
-			requires UniqueTypes<TypesList>
+			requires UniqueTypes<Cs...>
 		{
 			return std::tuple_cat(ForwardNonEmpty<Cts>(entity)...);
 		}
 
 		template<typename C>
 		[[nodiscard]] decltype(auto) TryGet(Entity entity)
-			requires UniqueTypes<TypesList>
+			requires UniqueTypes<Cs...>
 		{
 			return GetStorage<C>().TryGet(EntityToIndex(entity));
 		}
 
 		template<typename C>
 		[[nodiscard]] decltype(auto) TryGet(Entity entity) const
-			requires UniqueTypes<TypesList>
+			requires UniqueTypes<Cs...>
 		{
 			return GetStorage<C>().TryGet(EntityToIndex(entity));
 		}
 
 		template<typename... Cts>
-		[[nodiscard]] decltype(auto) TryGet(Entity entity) requires MoreThanOneType<Cts...> && UniqueTypes<TypesList> {
+		[[nodiscard]] decltype(auto) TryGet(Entity entity) requires MoreThanOneType<Cts...> && UniqueTypes<Cs...> {
 			const auto idx = EntityToIndex(entity);
 			return std::forward_as_tuple(GetStorage<Cts>().TryGet(idx)...);
 		}
 
 		template<typename... Cts>
-		[[nodiscard]] decltype(auto) TryGet(Entity entity) const requires MoreThanOneType<Cts...> && UniqueTypes<TypesList> {
+		[[nodiscard]] decltype(auto) TryGet(Entity entity) const requires MoreThanOneType<Cts...> && UniqueTypes<Cs...> {
 			const auto idx = EntityToIndex(entity);
 			return std::forward_as_tuple(GetStorage<Cts>().TryGet(idx)...);
 		}
@@ -595,7 +572,7 @@ namespace entable {
 		// -----------------------------------------------------------------
 		template<typename... Cts, typename Fn>
 		void Each(Fn&& fn)
-			requires UniqueTypes<TypesList>
+			requires UniqueTypes<Cs...>
 		{
 			static_assert(sizeof...(Cts) > 0, "Each<> requires at least one component type");
 			const size_t count = GetStorage<FirstComponent<Cts...>>().DenseSize();
@@ -606,7 +583,7 @@ namespace entable {
 
 		template<typename... Cts, typename Fn>
 		void Each(Fn&& fn) const
-			requires UniqueTypes<TypesList>
+			requires UniqueTypes<Cs...>
 		{
 			static_assert(sizeof...(Cts) > 0, "Each<> requires at least one component type");
 			const size_t count = GetStorage<FirstComponent<Cts...>>().DenseSize();
@@ -644,14 +621,14 @@ namespace entable {
 		// -----------------------------------------------------------------
 		template<typename C>
 		[[nodiscard]] auto Components() noexcept
-			requires UniqueTypes<TypesList>
+			requires UniqueTypes<Cs...>
 		{
 			return GetStorage<C>().GetDataSpans();
 		}
 
 		template<typename C>
 		[[nodiscard]] auto Components() const noexcept
-			requires UniqueTypes<TypesList>
+			requires UniqueTypes<Cs...>
 		{
 			return GetStorage<C>().GetDataSpans();
 		}
@@ -770,5 +747,5 @@ namespace entable {
 	};
 
 	template<typename... Cs>
-	using RegistryFromTypeList = Registry<type_list_t<Cs...>>;
+	using RegistryWithDefaultChunkSize = Registry<DEFAULT_DENSE_CHUNK_SIZE, Cs...>;
 }

@@ -24,7 +24,7 @@ struct Velocity {
     Velocity(float dx_, float dy_, float dz_) : dx(dx_), dy(dy_), dz(dz_) {}
 };
 
-using TestRegistry = ent::RegistryFromTypeList<Position, Velocity>;
+using TestRegistry = ent::RegistryWithDefaultChunkSize<Position, Velocity>;
 
 // =============================================================================
 // Entity Creation Tests
@@ -688,7 +688,7 @@ TEST_CASE("Registry: ShrinkToFit reduces memory footprint", "[Registry][ShrinkTo
         float vx, vy, vz;
     };
 
-    using Reg = ent::Registry<ent::type_list_t<Position, Velocity>>;
+    using Reg = ent::RegistryWithDefaultChunkSize<Position, Velocity>;
     Reg reg;
 
     SECTION("ShrinkToFit after destroying entities")
