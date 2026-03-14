@@ -25,7 +25,7 @@
 #endif
 
 
-namespace entable {
+namespace recoil {
 
     template <size_t CHUNK_SIZE>
     struct ChunkHelper
@@ -73,7 +73,15 @@ namespace entable {
 
     public:
 
+        // -----------------------------------------------------------------------
+        // Iterator
+        //
+        // Stores a snapshot of the array's size at construction so that reload_chunk
+        // never queries the array during sequential traversal, avoiding a potential
+        // pointer-chase through the array header on every chunk crossing.
+        //
         // end() is represented as current == nullptr.
+        // -----------------------------------------------------------------------
         template<bool IsConst>
         class Iterator {
         private:
@@ -81,56 +89,65 @@ namespace entable {
             using ReferenceType = std::conditional_t<IsConst, const T&, T&>;
             using PointerType   = std::conditional_t<IsConst, const T*, T*>;
 
-            PointerType current{};      // Pointer into current chunk; nullptr == past-the-end
-            PointerType chunk_end{};    // One past the last valid element in the current chunk
-            ArrayType*  array{};        // For chunk access in reload and random-access ops
-            size_t      chunk_index{};  // Current chunk index
+            PointerType current{};     // Pointer into current chunk; nullptr == past-the-end
+            PointerType chunk_start{}; // First element of the current chunk
+            PointerType chunk_end{};   // One past the last live element in the current chunk
+            ArrayType*  array{};
+            size_t      chunk_index{};
+            // Snapshot of array->size() taken at iterator construction.
+            // This decouples reload_chunk() from the array header during traversal.
+            // Standard invalidation rules apply: growing the array does not invalidate
+            // existing iterators (they simply won't see new elements), but shrinking the
+            // array while an iterator is live is undefined — the iterator's array_size
+            // snapshot would cause it to visit elements that have been destroyed.
+            size_t      array_size{};
 
-            // Absolute index computed from chunk_index + intra-chunk offset of `current`.
-            // Only called for random-access operations, not in the sequential hot path.
-            size_t get_index() const noexcept {
-                if (current == nullptr) {
-                    return array ? array->size() : 0;
-                }
-                assert(array != nullptr);
-                return chunk_index * CHUNK_SIZE +
-                       static_cast<size_t>(current - array->get_chunk_ptr(chunk_index));
-            }
-
-            void reload_chunk() {
+            // Reload current/chunk_end/chunk_start for the current chunk_index.
+            // Uses cached array_size — no access to array->size() or array->chunk_count().
+            void reload_chunk() noexcept {
                 const size_t chunk_base = chunk_index * CHUNK_SIZE;
-                if (chunk_base < array->size()) [[likely]] {
-                    PointerType chunkData = array->get_chunk_ptr(chunk_index);
-                    current = chunkData;
-                    const size_t elemsInChunk = (chunk_base + CHUNK_SIZE <= array->size())
-                        ? CHUNK_SIZE
-                        : array->size() - chunk_base;
-                    chunk_end = chunkData + elemsInChunk;
+                if (chunk_base < array_size) [[likely]] {
+                    chunk_start = array->get_chunk_ptr(chunk_index);
+                    current     = chunk_start;
+                    chunk_end   = chunk_start + (
+                        (chunk_base + CHUNK_SIZE <= array_size) ? CHUNK_SIZE
+                                                                : array_size - chunk_base);
                 } else {
-                    current   = nullptr;
-                    chunk_end = nullptr;
-                }
-            }
-
-            void reload_chunk_from_index(size_t idx) {
-                if (idx < array->size()) [[likely]] {
-                    chunk_index = Helper::ChunkIndex(idx);
-                    const size_t o = Helper::OffsetIndex(idx);
-                    PointerType chunkData = array->get_chunk_ptr(chunk_index);
-                    current = chunkData + o;
-                    const size_t chunk_base = chunk_index * CHUNK_SIZE;
-                    const size_t elemsInChunk = (chunk_base + CHUNK_SIZE <= array->size())
-                        ? CHUNK_SIZE
-                        : array->size() - chunk_base;
-                    chunk_end = chunkData + elemsInChunk;
-                } else {
+                    chunk_start = nullptr;
                     current     = nullptr;
                     chunk_end   = nullptr;
-                    // Use size-based calculation so end() chunk_index is correct even
-                    // when reserve() has pre-allocated chunks beyond the live elements.
-                    chunk_index = array->size() > 0
-                        ? Helper::ChunkIndex(array->size() - 1) + 1 : 0;
                 }
+            }
+
+            // Position the iterator at absolute index idx.
+            // idx == array_size yields end(); idx > array_size is undefined.
+            void reload_from_index(size_t idx) noexcept {
+                if (idx < array_size) [[likely]] {
+                    chunk_index             = Helper::ChunkIndex(idx);
+                    chunk_start             = array->get_chunk_ptr(chunk_index);
+                    current                 = chunk_start + Helper::OffsetIndex(idx);
+                    const size_t chunk_base = chunk_index * CHUNK_SIZE;
+                    chunk_end = chunk_start + (
+                        (chunk_base + CHUNK_SIZE <= array_size) ? CHUNK_SIZE
+                                                                : array_size - chunk_base);
+                } else {
+                    // end(): set chunk_index to one past the last chunk so that
+                    // operator-- can decrement directly into the last chunk.
+                    chunk_index = (array_size > 0)
+                        ? Helper::ChunkIndex(array_size - 1) + 1 : 0;
+                    chunk_start = nullptr;
+                    current     = nullptr;
+                    chunk_end   = nullptr;
+                }
+            }
+
+            // Pure arithmetic: no memory access, no vector indexing.
+            size_t get_index() const noexcept {
+                if (current == nullptr)
+                    return array_size;
+                assert(array != nullptr);
+                return chunk_index * CHUNK_SIZE +
+                       static_cast<size_t>(current - chunk_start);
             }
 
         public:
@@ -145,39 +162,26 @@ namespace entable {
 
             Iterator(ArrayType* arr, size_t idx)
                 : array(arr)
+                , array_size(arr ? arr->size() : 0)
             {
-                if (array && idx < array->size()) [[likely]] {
-                    chunk_index = Helper::ChunkIndex(idx);
-                    const size_t o = Helper::OffsetIndex(idx);
-                    PointerType chunkData = array->get_chunk_ptr(chunk_index);
-                    current = chunkData + o;
-                    const size_t chunk_base = chunk_index * CHUNK_SIZE;
-                    const size_t elemsInChunk = (chunk_base + CHUNK_SIZE <= array->size())
-                        ? CHUNK_SIZE
-                        : array->size() - chunk_base;
-                    chunk_end = chunkData + elemsInChunk;
-                } else {
-                    current     = nullptr;
-                    chunk_end   = nullptr;
-                    // Use size-based calculation so end() chunk_index is correct even
-                    // when reserve() has pre-allocated chunks beyond the live elements.
-                    chunk_index = arr && arr->size() > 0
-                        ? Helper::ChunkIndex(arr->size() - 1) + 1 : 0;
-                }
+                reload_from_index(idx);
             }
 
+            // Converting constructor: non-const -> const.
             template<bool IsConst_ = IsConst, std::enable_if_t<IsConst_, int> = 0>
             Iterator(const Iterator<false>& other)
                 : current(other.current)
+                , chunk_start(other.chunk_start)
                 , chunk_end(other.chunk_end)
                 , array(other.array)
                 , chunk_index(other.chunk_index)
+                , array_size(other.array_size)
             {}
 
             ReferenceType operator*()  const { assert(current != nullptr && "dereference of end() iterator"); return *current; }
             PointerType   operator->() const { assert(current != nullptr && "dereference of end() iterator"); return current;  }
 
-            // Hot path: single pointer increment + one branch on chunk boundary.
+            // Hot path: pointer increment + one unlikely branch at chunk boundary.
             Iterator& operator++() {
                 assert(current != nullptr && "increment of end() iterator");
                 ++current;
@@ -191,24 +195,23 @@ namespace entable {
             Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
 
             Iterator& operator--() {
+                assert(array != nullptr && "decrement of invalid iterator");
+
                 if (current == nullptr) [[unlikely]] {
-                    if (array && array->size() > 0) [[likely]] {
-                        // chunk_index is one past the last live chunk; step back into it.
-                        --chunk_index;
-                        reload_chunk();
-                        current = chunk_end - 1;
-                    }
+                    // Decrementing end(): chunk_index == total_chunks (set by
+                    // reload_from_index); step back into the last live chunk.
+                    assert(array_size > 0 && "decrement of end() on empty array is undefined");
+                    --chunk_index;
+                    reload_chunk();
+                    current = chunk_end - 1;
                     return *this;
                 }
-                assert(array != nullptr);
-                PointerType chunk_start = array->get_chunk_ptr(chunk_index);
+
                 if (current == chunk_start) [[unlikely]] {
                     assert(chunk_index > 0 && "decrement of begin() iterator is undefined");
-                    if (chunk_index > 0) [[likely]] {
-                        --chunk_index;
-                        reload_chunk();
-                        current = chunk_end - 1;
-                    }
+                    --chunk_index;
+                    reload_chunk();
+                    current = chunk_end - 1;
                 } else [[likely]] {
                     --current;
                 }
@@ -219,17 +222,23 @@ namespace entable {
 
             Iterator& operator+=(difference_type offset) {
                 if (offset == 0) return *this;
-                const size_t newIdx = static_cast<size_t>(
-                    static_cast<difference_type>(get_index()) + offset);
-                reload_chunk_from_index(newIdx);
+                const difference_type new_idx =
+                    static_cast<difference_type>(get_index()) + offset;
+                assert(new_idx >= 0 &&
+                       static_cast<size_t>(new_idx) <= array_size &&
+                       "iterator arithmetic out of range");
+                reload_from_index(static_cast<size_t>(new_idx));
                 return *this;
             }
 
             Iterator& operator-=(difference_type offset) {
                 if (offset == 0) return *this;
-                const size_t newIdx = static_cast<size_t>(
-                    static_cast<difference_type>(get_index()) - offset);
-                reload_chunk_from_index(newIdx);
+                const difference_type new_idx =
+                    static_cast<difference_type>(get_index()) - offset;
+                assert(new_idx >= 0 &&
+                       static_cast<size_t>(new_idx) <= array_size &&
+                       "iterator arithmetic out of range");
+                reload_from_index(static_cast<size_t>(new_idx));
                 return *this;
             }
 
@@ -237,8 +246,12 @@ namespace entable {
             Iterator operator-(difference_type offset) const { Iterator tmp = *this; return tmp -= offset; }
 
             reference operator[](difference_type offset) const {
-                return (*array)[static_cast<size_t>(
-                    static_cast<difference_type>(get_index()) + offset)];
+                const difference_type new_idx =
+                    static_cast<difference_type>(get_index()) + offset;
+                assert(new_idx >= 0 &&
+                       static_cast<size_t>(new_idx) < array_size &&
+                       "iterator [] offset out of range");
+                return (*array)[static_cast<size_t>(new_idx)];
             }
 
             template<bool OtherIsConst>
@@ -247,7 +260,8 @@ namespace entable {
                        static_cast<difference_type>(other.get_index());
             }
 
-            // Equality uses the current pointer as a unique position identifier.
+            // == and != use the current pointer directly (cheaper than get_index()).
+            // Ordering operators use get_index() for correctness across chunk boundaries.
             template<bool OtherIsConst>
             bool operator==(const Iterator<OtherIsConst>& other) const noexcept { return current == other.current; }
             template<bool OtherIsConst>
@@ -261,6 +275,8 @@ namespace entable {
             template<bool OtherIsConst>
             bool operator>=(const Iterator<OtherIsConst>& other) const { return get_index() >= other.get_index(); }
 
+            // Allows const iterator to access non-const iterator's private members
+            // for the converting constructor and cross-constness comparison operators.
             template<bool> friend class Iterator;
         };
 
@@ -353,9 +369,6 @@ namespace entable {
         [[nodiscard]] size_t capacity()    const noexcept { return chunks.size() * CHUNK_SIZE; }
         [[nodiscard]] bool   empty()       const noexcept { return elemCount == 0; }
         [[nodiscard]] size_t size()        const noexcept { return elemCount; }
-        // Returns the number of allocated chunks, which may exceed the number of
-        // chunks containing live elements after reserve() or reset(). Use
-        // for_each_chunk() to iterate only over chunks with live data.
         [[nodiscard]] size_t chunk_count() const noexcept { return chunks.size(); }
 
         // Grow to exactly count elements, default-constructing any new ones.
@@ -411,29 +424,29 @@ namespace entable {
         // Element access
         // -----------------------------------------------------------------------
 
-        reference       operator[](size_t idx)       { return chunks[Helper::ChunkIndex(idx)].get()[Helper::OffsetIndex(idx)]; }
-        const_reference operator[](size_t idx) const { return chunks[Helper::ChunkIndex(idx)].get()[Helper::OffsetIndex(idx)]; }
+        decltype(auto) operator[](size_t idx)       { return chunks[Helper::ChunkIndex(idx)].get()[Helper::OffsetIndex(idx)]; }
+        decltype(auto) operator[](size_t idx) const { return chunks[Helper::ChunkIndex(idx)].get()[Helper::OffsetIndex(idx)]; }
 
-        reference at(size_t idx) {
+        decltype(auto) at(size_t idx) {
             if (idx >= elemCount) [[unlikely]] throw std::out_of_range("ChunkedArray::at index out of range");
             return (*this)[idx];
         }
-        const_reference at(size_t idx) const {
+        decltype(auto) at(size_t idx) const {
             if (idx >= elemCount) [[unlikely]] throw std::out_of_range("ChunkedArray::at index out of range");
             return (*this)[idx];
         }
 
-        reference       front()       { assert(elemCount > 0); return (*this)[0]; }
-        const_reference front() const { assert(elemCount > 0); return (*this)[0]; }
-        reference       back()        { assert(elemCount > 0); return (*this)[elemCount - 1]; }
-        const_reference back()  const { assert(elemCount > 0); return (*this)[elemCount - 1]; }
+        decltype(auto) front()       { assert(elemCount > 0); return (*this)[0]; }
+        decltype(auto) front() const { assert(elemCount > 0); return (*this)[0]; }
+        decltype(auto) back()        { assert(elemCount > 0); return (*this)[elemCount - 1]; }
+        decltype(auto) back()  const { assert(elemCount > 0); return (*this)[elemCount - 1]; }
 
         // -----------------------------------------------------------------------
         // Modifiers
         // -----------------------------------------------------------------------
 
         template<typename... Args>
-        reference emplace_back(Args&&... args) {
+        decltype(auto) emplace_back(Args&&... args) {
             if (m_writePtr == m_chunkEnd) [[unlikely]]
                 allocate_new_chunk();
             T* slot = m_writePtr;
@@ -450,18 +463,7 @@ namespace entable {
             assert(elemCount > 0);
             --elemCount;
             std::destroy_at(std::addressof((*this)[elemCount]));
-            // Fast path: the freed slot and the new write position are in the same
-            // chunk, so we can simply step m_writePtr back by one.
-            // This holds when the new elemCount is NOT the last slot of its chunk —
-            // equivalently when OffsetIndex(elemCount) != CHUNK_SIZE-1 — because if
-            // it were, then m_writePtr (which points at slot elemCount+1) would be
-            // sitting at the first slot of the *next* chunk (a separate allocation),
-            // and --m_writePtr would step before that chunk into unrelated memory.
-            if (Helper::OffsetIndex(elemCount) != Helper::MASK) [[likely]] {
-                --m_writePtr;
-            } else {
-                update_write_ptr();
-            }
+            update_write_ptr();
         }
 
         // Removes the element at idx in O(1) by moving the last element into the
@@ -485,68 +487,27 @@ namespace entable {
 
         std::span<T> get_chunk_span(size_t chunk_idx) noexcept {
             if (chunk_idx >= chunks.size()) [[unlikely]] return {};
-            const size_t chunk_base = chunk_idx * CHUNK_SIZE;
-            if (chunk_base >= elemCount) return {};
-            return {chunks[chunk_idx].get(), std::min(CHUNK_SIZE, elemCount - chunk_base)};
+            T* start = chunks[chunk_idx].get();
+            if (chunk_idx == chunks.size() - 1) {
+                const size_t base = chunk_idx * CHUNK_SIZE;
+                return {start, elemCount > base ? elemCount - base : 0};
+            }
+            return {start, CHUNK_SIZE};
         }
 
         std::span<const T> get_chunk_span(size_t chunk_idx) const noexcept {
             if (chunk_idx >= chunks.size()) [[unlikely]] return {};
-            const size_t chunk_base = chunk_idx * CHUNK_SIZE;
-            if (chunk_base >= elemCount) return {};
-            return {chunks[chunk_idx].get(), std::min(CHUNK_SIZE, elemCount - chunk_base)};
+            const T* start = chunks[chunk_idx].get();
+            if (chunk_idx == chunks.size() - 1) {
+                const size_t base = chunk_idx * CHUNK_SIZE;
+                return {start, elemCount > base ? elemCount - base : 0};
+            }
+            return {start, CHUNK_SIZE};
         }
 
         // -----------------------------------------------------------------------
-        // Chunk iteration
-        //
-        // Chunk-first iteration is the canonical fast path for large workloads.
-        // The inner loop over each span is pure pointer iteration with no branch
-        // overhead, and each span is contiguous — ideal for prefetching, SIMD,
-        // and auto-vectorization.
-        //
-        // Job-system parallelism is trivially expressible:
-        //
-        //   arr.for_each_chunk_indexed([&](size_t c, std::span<T> chunk) {
-        //       jobSystem.schedule([chunk] {
-        //           for (T& t : chunk) update(t);
-        //       });
-        //   });
-        //
-        // Note: chunk spans must not outlive the ChunkedArray, and the array
-        // must not be mutated while spans are in use.
+        // Iterators
         // -----------------------------------------------------------------------
-
-        // Calls f(std::span<T>) for each live chunk in order.
-        template<typename F>
-        void for_each_chunk(F&& f) {
-            const size_t live = elemCount > 0 ? Helper::ChunkIndex(elemCount - 1) + 1 : 0;
-            for (size_t c = 0; c < live; ++c)
-                f(get_chunk_span(c));
-        }
-
-        template<typename F>
-        void for_each_chunk(F&& f) const {
-            const size_t live = elemCount > 0 ? Helper::ChunkIndex(elemCount - 1) + 1 : 0;
-            for (size_t c = 0; c < live; ++c)
-                f(get_chunk_span(c));
-        }
-
-        // Calls f(size_t chunkIndex, std::span<T>) for each live chunk in order.
-        // The chunk index enables job-system scheduling and per-chunk bookkeeping.
-        template<typename F>
-        void for_each_chunk_indexed(F&& f) {
-            const size_t live = elemCount > 0 ? Helper::ChunkIndex(elemCount - 1) + 1 : 0;
-            for (size_t c = 0; c < live; ++c)
-                f(c, get_chunk_span(c));
-        }
-
-        template<typename F>
-        void for_each_chunk_indexed(F&& f) const {
-            const size_t live = elemCount > 0 ? Helper::ChunkIndex(elemCount - 1) + 1 : 0;
-            for (size_t c = 0; c < live; ++c)
-                f(c, get_chunk_span(c));
-        }
 
         iterator       begin()        { return iterator(this, 0); }
         iterator       end()          { return iterator(this, elemCount); }
@@ -673,4 +634,4 @@ namespace entable {
         }
     };
 
-} // namespace entable
+} // namespace recoil

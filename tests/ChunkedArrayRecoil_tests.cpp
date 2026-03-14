@@ -1,13 +1,13 @@
 // Catch2 tests for ChunkedArray correctness
 
 #include <catch2/catch_test_macros.hpp>
-#include <ChunkedArray.hpp>
+#include <ChunkedArrayRecoil.hpp>
 #include <algorithm>
 #include <vector>
 #include <string>
 #include <stdexcept>
 
-namespace ent = entable;
+namespace ent = recoil;
 
 static constexpr size_t kChunkSize = 256;
 
@@ -15,7 +15,7 @@ static constexpr size_t kChunkSize = 256;
 // Non-Empty Type Tests (comparing against std::vector)
 // =============================================================================
 
-TEST_CASE("ChunkedArray<int>: push_back matches vector", "[ChunkedArray][non-empty][push_back]")
+TEST_CASE("ChunkedArray<int>: push_back matches vector", "[ChunkedArrayRecoil][non-empty][push_back]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
     std::vector<int> reference;
@@ -91,7 +91,7 @@ TEST_CASE("ChunkedArray<int>: push_back matches vector", "[ChunkedArray][non-emp
     }
 }
 
-TEST_CASE("ChunkedArray<int>: emplace_back matches vector", "[ChunkedArray][non-empty][emplace_back]")
+TEST_CASE("ChunkedArray<int>: emplace_back matches vector", "[ChunkedArrayRecoil][non-empty][emplace_back]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
     std::vector<int> reference;
@@ -112,7 +112,7 @@ TEST_CASE("ChunkedArray<int>: emplace_back matches vector", "[ChunkedArray][non-
     }
 }
 
-TEST_CASE("ChunkedArray<string>: emplace_back with args", "[ChunkedArray][non-empty][emplace_back]")
+TEST_CASE("ChunkedArray<string>: emplace_back with args", "[ChunkedArrayRecoil][non-empty][emplace_back]")
 {
     ent::ChunkedArray<std::string, kChunkSize> chunked;
     std::vector<std::string> reference;
@@ -134,7 +134,7 @@ TEST_CASE("ChunkedArray<string>: emplace_back with args", "[ChunkedArray][non-em
     }
 }
 
-TEST_CASE("ChunkedArray<int>: operator subscript read/write", "[ChunkedArray][non-empty][subscript]")
+TEST_CASE("ChunkedArray<int>: operator subscript read/write", "[ChunkedArrayRecoil][non-empty][subscript]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
     std::vector<int> reference;
@@ -176,7 +176,7 @@ TEST_CASE("ChunkedArray<int>: operator subscript read/write", "[ChunkedArray][no
     }
 }
 
-TEST_CASE("ChunkedArray<int>: at() with bounds checking", "[ChunkedArray][non-empty][at]")
+TEST_CASE("ChunkedArray<int>: at() with bounds checking", "[ChunkedArrayRecoil][non-empty][at]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
     chunked.push_back(10);
@@ -203,7 +203,7 @@ TEST_CASE("ChunkedArray<int>: at() with bounds checking", "[ChunkedArray][non-em
     }
 }
 
-TEST_CASE("ChunkedArray<int>: ensure_size", "[ChunkedArray][non-empty][ensure_size]")
+TEST_CASE("ChunkedArray<int>: ensure_size", "[ChunkedArrayRecoil][non-empty][ensure_size]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
 
@@ -228,7 +228,7 @@ TEST_CASE("ChunkedArray<int>: ensure_size", "[ChunkedArray][non-empty][ensure_si
     }
 }
 
-TEST_CASE("ChunkedArray<int>: reserve", "[ChunkedArray][non-empty][reserve]")
+TEST_CASE("ChunkedArray<int>: reserve", "[ChunkedArrayRecoil][non-empty][reserve]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
 
@@ -250,7 +250,7 @@ TEST_CASE("ChunkedArray<int>: reserve", "[ChunkedArray][non-empty][reserve]")
     }
 }
 
-TEST_CASE("ChunkedArray<int>: clear", "[ChunkedArray][non-empty][clear]")
+TEST_CASE("ChunkedArray<int>: clear", "[ChunkedArrayRecoil][non-empty][clear]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
 
@@ -269,7 +269,7 @@ TEST_CASE("ChunkedArray<int>: clear", "[ChunkedArray][non-empty][clear]")
     REQUIRE(chunked.chunk_count() == 0);
 }
 
-TEST_CASE("ChunkedArray<int>: shrink_to_fit", "[ChunkedArray][non-empty][shrink_to_fit]")
+TEST_CASE("ChunkedArray<int>: shrink_to_fit", "[ChunkedArrayRecoil][non-empty][shrink_to_fit]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
 
@@ -318,7 +318,7 @@ TEST_CASE("ChunkedArray<int>: shrink_to_fit", "[ChunkedArray][non-empty][shrink_
     }
 }
 
-TEST_CASE("ChunkedArray<int>: back() and pop_back()", "[ChunkedArray][non-empty][back][pop_back]")
+TEST_CASE("ChunkedArray<int>: back() and pop_back()", "[ChunkedArrayRecoil][non-empty][back][pop_back]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
     std::vector<int> reference;
@@ -348,7 +348,7 @@ TEST_CASE("ChunkedArray<int>: back() and pop_back()", "[ChunkedArray][non-empty]
     }
 }
 
-TEST_CASE("ChunkedArray<int>: iteration", "[ChunkedArray][non-empty][iterator]")
+TEST_CASE("ChunkedArray<int>: iteration", "[ChunkedArrayRecoil][non-empty][iterator]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
     std::vector<int> reference;
@@ -406,7 +406,7 @@ TEST_CASE("ChunkedArray<int>: iteration", "[ChunkedArray][non-empty][iterator]")
     }
 }
 
-TEST_CASE("ChunkedArray<int>: reverse iteration", "[ChunkedArray][non-empty][iterator][reverse]")
+TEST_CASE("ChunkedArray<int>: reverse iteration", "[ChunkedArrayRecoil][non-empty][iterator][reverse]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
     std::vector<int> reference;
@@ -448,7 +448,7 @@ TEST_CASE("ChunkedArray<int>: reverse iteration", "[ChunkedArray][non-empty][ite
     }
 }
 
-TEST_CASE("ChunkedArray<int>: iterator random access", "[ChunkedArray][non-empty][iterator][random-access]")
+TEST_CASE("ChunkedArray<int>: iterator random access", "[ChunkedArrayRecoil][non-empty][iterator][random-access]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
     std::vector<int> reference;
@@ -525,7 +525,7 @@ TEST_CASE("ChunkedArray<int>: iterator random access", "[ChunkedArray][non-empty
     }
 }
 
-TEST_CASE("ChunkedArray<int>: get_chunk_span", "[ChunkedArray][non-empty][get_chunk_span]")
+TEST_CASE("ChunkedArray<int>: get_chunk_span", "[ChunkedArrayRecoil][non-empty][get_chunk_span]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
 
@@ -572,7 +572,7 @@ TEST_CASE("ChunkedArray<int>: get_chunk_span", "[ChunkedArray][non-empty][get_ch
     }
 }
 
-TEST_CASE("ChunkedArray<int>: iterators after reserve with surplus chunks", "[ChunkedArray][iterator][reserve]")
+TEST_CASE("ChunkedArray<int>: iterators after reserve with surplus chunks", "[ChunkedArrayRecoil][iterator][reserve]")
 {
     // Regression: end() iterator used chunk_count() for its chunk_index, which equals
     // the number of *allocated* chunks. After reserve(), that can exceed the number of
@@ -627,7 +627,7 @@ TEST_CASE("ChunkedArray<int>: iterators after reserve with surplus chunks", "[Ch
     }
 }
 
-TEST_CASE("ChunkedArray<struct>: complex types", "[ChunkedArray][non-empty][complex]")
+TEST_CASE("ChunkedArray<struct>: complex types", "[ChunkedArrayRecoil][non-empty][complex]")
 {
     struct Point3d {
         double x = 0, y = 0, z = 0;
@@ -677,7 +677,7 @@ TEST_CASE("ChunkedArray<struct>: complex types", "[ChunkedArray][non-empty][comp
 // resize()
 // =============================================================================
 
-TEST_CASE("ChunkedArray<int>: resize()", "[ChunkedArray][non-empty][resize]")
+TEST_CASE("ChunkedArray<int>: resize()", "[ChunkedArrayRecoil][non-empty][resize]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
 
@@ -773,7 +773,7 @@ TEST_CASE("ChunkedArray<int>: resize()", "[ChunkedArray][non-empty][resize]")
 // Iterator correctness: empty container
 // =============================================================================
 
-TEST_CASE("ChunkedArray<int> iterator: empty container", "[ChunkedArray][non-empty][iterator][empty]")
+TEST_CASE("ChunkedArray<int> iterator: empty container", "[ChunkedArrayRecoil][non-empty][iterator][empty]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
 
@@ -801,7 +801,7 @@ TEST_CASE("ChunkedArray<int> iterator: empty container", "[ChunkedArray][non-emp
 // Iterator correctness: operator== / operator< consistency
 // =============================================================================
 
-TEST_CASE("ChunkedArray<int> iterator: operator== consistent with operator<", "[ChunkedArray][non-empty][iterator][ordering]")
+TEST_CASE("ChunkedArray<int> iterator: operator== consistent with operator<", "[ChunkedArrayRecoil][non-empty][iterator][ordering]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
     for (int i = 0; i < static_cast<int>(kChunkSize) * 3; ++i) chunked.push_back(i);
@@ -843,7 +843,7 @@ TEST_CASE("ChunkedArray<int> iterator: operator== consistent with operator<", "[
 // Iterator correctness: position invariant under increment / decrement
 // =============================================================================
 
-TEST_CASE("ChunkedArray<int> iterator: position stays consistent", "[ChunkedArray][non-empty][iterator][position]")
+TEST_CASE("ChunkedArray<int> iterator: position stays consistent", "[ChunkedArrayRecoil][non-empty][iterator][position]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
     const int N = static_cast<int>(kChunkSize) * 3 + 50;
@@ -904,7 +904,7 @@ TEST_CASE("ChunkedArray<int> iterator: position stays consistent", "[ChunkedArra
 // Iterator correctness: decrement across chunk boundaries
 // =============================================================================
 
-TEST_CASE("ChunkedArray<int> iterator: decrement across chunk boundaries", "[ChunkedArray][non-empty][iterator][boundary]")
+TEST_CASE("ChunkedArray<int> iterator: decrement across chunk boundaries", "[ChunkedArrayRecoil][non-empty][iterator][boundary]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
     const size_t N = kChunkSize * 3;
@@ -951,7 +951,7 @@ TEST_CASE("ChunkedArray<int> iterator: decrement across chunk boundaries", "[Chu
 // Iterator correctness: commutative operator+ and const_iterator conversion
 // =============================================================================
 
-TEST_CASE("ChunkedArray<int> iterator: commutative n + it == it + n", "[ChunkedArray][non-empty][iterator][operator+]")
+TEST_CASE("ChunkedArray<int> iterator: commutative n + it == it + n", "[ChunkedArrayRecoil][non-empty][iterator][operator+]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
     for (int i = 0; i < 300; ++i) chunked.push_back(i);
@@ -964,7 +964,7 @@ TEST_CASE("ChunkedArray<int> iterator: commutative n + it == it + n", "[ChunkedA
     REQUIRE(*it1 == 100);
 }
 
-TEST_CASE("ChunkedArray<int> iterator: const_iterator from mutable iterator", "[ChunkedArray][non-empty][iterator][const]")
+TEST_CASE("ChunkedArray<int> iterator: const_iterator from mutable iterator", "[ChunkedArrayRecoil][non-empty][iterator][const]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
     for (int i = 0; i < 300; ++i) chunked.push_back(i);
@@ -1001,7 +1001,7 @@ TEST_CASE("ChunkedArray<int> iterator: const_iterator from mutable iterator", "[
 // Standard algorithm compatibility
 // =============================================================================
 
-TEST_CASE("ChunkedArray<int> iterator: std::distance", "[ChunkedArray][non-empty][iterator][std]")
+TEST_CASE("ChunkedArray<int> iterator: std::distance", "[ChunkedArrayRecoil][non-empty][iterator][std]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
     const size_t N = kChunkSize * 4 + 77;
@@ -1020,7 +1020,7 @@ TEST_CASE("ChunkedArray<int> iterator: std::distance", "[ChunkedArray][non-empty
     }
 }
 
-TEST_CASE("ChunkedArray<int> iterator: std::sort", "[ChunkedArray][non-empty][iterator][std]")
+TEST_CASE("ChunkedArray<int> iterator: std::sort", "[ChunkedArrayRecoil][non-empty][iterator][std]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
     std::vector<int> reference;
@@ -1047,7 +1047,7 @@ TEST_CASE("ChunkedArray<int> iterator: std::sort", "[ChunkedArray][non-empty][it
     }
 }
 
-TEST_CASE("ChunkedArray<int> iterator: std::find and std::reverse", "[ChunkedArray][non-empty][iterator][std]")
+TEST_CASE("ChunkedArray<int> iterator: std::find and std::reverse", "[ChunkedArrayRecoil][non-empty][iterator][std]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
     const int N = static_cast<int>(kChunkSize) * 2 + 50;
@@ -1088,7 +1088,7 @@ TEST_CASE("ChunkedArray<int> iterator: std::find and std::reverse", "[ChunkedArr
 // pop_back write-pointer invariants (covers the specific bug fix)
 // =============================================================================
 
-TEST_CASE("ChunkedArray<int>: pop_back then push_back write-pointer invariants", "[ChunkedArray][non-empty][pop_back][write_ptr]")
+TEST_CASE("ChunkedArray<int>: pop_back then push_back write-pointer invariants", "[ChunkedArrayRecoil][non-empty][pop_back][write_ptr]")
 {
     ent::ChunkedArray<int, kChunkSize> chunked;
 
@@ -1170,7 +1170,7 @@ struct NoDflt {
 int NoDflt::s_constructed = 0;
 int NoDflt::s_destroyed   = 0;
 
-TEST_CASE("ChunkedArray<NoDflt>: pop_back does not require default constructor", "[ChunkedArray][non-default-constructible][pop_back]")
+TEST_CASE("ChunkedArray<NoDflt>: pop_back does not require default constructor", "[ChunkedArrayRecoil][non-default-constructible][pop_back]")
 {
     NoDflt::reset_counts();
     {
@@ -1221,7 +1221,7 @@ TEST_CASE("ChunkedArray<NoDflt>: pop_back does not require default constructor",
     REQUIRE(NoDflt::live() == 0);
 }
 
-TEST_CASE("ChunkedArray<NoDflt>: clear destructs all elements", "[ChunkedArray][non-default-constructible][clear]")
+TEST_CASE("ChunkedArray<NoDflt>: clear destructs all elements", "[ChunkedArrayRecoil][non-default-constructible][clear]")
 {
     NoDflt::reset_counts();
     {
@@ -1243,7 +1243,7 @@ TEST_CASE("ChunkedArray<NoDflt>: clear destructs all elements", "[ChunkedArray][
     REQUIRE(NoDflt::live() == 0);
 }
 
-TEST_CASE("ChunkedArray<NoDflt>: move construction transfers ownership", "[ChunkedArray][non-default-constructible][move]")
+TEST_CASE("ChunkedArray<NoDflt>: move construction transfers ownership", "[ChunkedArrayRecoil][non-default-constructible][move]")
 {
     NoDflt::reset_counts();
     {
@@ -1260,7 +1260,7 @@ TEST_CASE("ChunkedArray<NoDflt>: move construction transfers ownership", "[Chunk
     REQUIRE(NoDflt::live() == 0);
 }
 
-TEST_CASE("ChunkedArray<NoDflt>: move assignment transfers ownership", "[ChunkedArray][non-default-constructible][move]")
+TEST_CASE("ChunkedArray<NoDflt>: move assignment transfers ownership", "[ChunkedArrayRecoil][non-default-constructible][move]")
 {
     NoDflt::reset_counts();
     {
@@ -1281,7 +1281,7 @@ TEST_CASE("ChunkedArray<NoDflt>: move assignment transfers ownership", "[Chunked
     REQUIRE(NoDflt::live() == 0);
 }
 
-TEST_CASE("ChunkedArray<NoDflt>: destructor releases all elements", "[ChunkedArray][non-default-constructible][destructor]")
+TEST_CASE("ChunkedArray<NoDflt>: destructor releases all elements", "[ChunkedArrayRecoil][non-default-constructible][destructor]")
 {
     NoDflt::reset_counts();
     {
@@ -1297,7 +1297,7 @@ TEST_CASE("ChunkedArray<NoDflt>: destructor releases all elements", "[ChunkedArr
 // Stress test: push/pop cycles across chunk boundaries (catches write pointer bugs)
 // =============================================================================
 
-TEST_CASE("ChunkedArray<NoDflt>: stress test push/pop cycles across chunk boundaries", "[ChunkedArray][non-default-constructible][pop_back][stress]")
+TEST_CASE("ChunkedArray<NoDflt>: stress test push/pop cycles across chunk boundaries", "[ChunkedArrayRecoil][non-default-constructible][pop_back][stress]")
 {
     // This test would have caught the pop_back bug where m_writePtr was destroyed
     // instead of the actual last element. The bug caused element count corruption
@@ -1345,7 +1345,7 @@ TEST_CASE("ChunkedArray<NoDflt>: stress test push/pop cycles across chunk bounda
 }
 
 TEST_CASE("ChunkedArray<NoDflt>: resize(n, value) with non-default-constructible value type",
-          "[ChunkedArray][non-default-constructible][resize]")
+          "[ChunkedArrayRecoil][non-default-constructible][resize]")
 {
     NoDflt::reset_counts();
     {
