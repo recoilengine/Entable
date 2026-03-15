@@ -1372,3 +1372,119 @@ TEST_CASE("ChunkedArray<NoDflt>: resize(n, value) with non-default-constructible
     }
     REQUIRE(NoDflt::live() == 0);
 }
+
+// =============================================================================
+// Regression: allocate_new_chunk must reuse chunks pre-allocated by reserve()
+//
+// Bug: allocate_new_chunk() unconditionally called chunks.push_back(make_chunk()),
+// ignoring chunks already pre-allocated by reserve(). Elements pushed across a
+// chunk boundary landed in a newly-appended chunk at index N, while operator[]
+// continued to address the skipped pre-allocated chunk at index 1 — returning
+// uninitialized garbage.
+//
+// Sequence that triggered the crash:
+//   reserve(2*CS) → chunks[0], chunks[1] allocated
+//   push_back CS elements → fills chunks[0]; m_writePtr == m_chunkEnd
+//   push_back 1 more → allocate_new_chunk() fires
+//   BUG: pushes chunks[2] instead of reusing chunks[1]
+//   element CS written to chunks[2][0], but operator[](CS) returns chunks[1][0]
+// =============================================================================
+
+TEST_CASE("ChunkedArray: reserve then push_back reuses pre-allocated chunks",
+          "[ChunkedArray][reserve][allocate_new_chunk][regression]")
+{
+    constexpr size_t CS = 4;
+    ent::ChunkedArray<int, CS> arr;
+
+    SECTION("reserve(2*CS) then fill: values must match across chunk boundary")
+    {
+        arr.reserve(2 * CS);
+        REQUIRE(arr.chunk_count() == 2);
+
+        for (int i = 0; i < static_cast<int>(2 * CS); ++i)
+            arr.push_back(i);
+
+        REQUIRE(arr.size() == 2 * CS);
+        // Bug manifests here: arr[CS] reads chunks[1][0] (uninitialized)
+        // while the value was actually written to the spurious chunks[2][0]
+        for (int i = 0; i < static_cast<int>(2 * CS); ++i)
+            REQUIRE(arr[i] == i);
+        // The bug also leaks a chunk: count grows to 3 instead of staying at 2
+        REQUIRE(arr.chunk_count() == 2);
+    }
+
+    SECTION("reserve(3*CS) then fill: values correct across all chunk boundaries")
+    {
+        arr.reserve(3 * CS);
+        REQUIRE(arr.chunk_count() == 3);
+
+        for (int i = 0; i < static_cast<int>(3 * CS); ++i)
+            arr.push_back(i);
+
+        REQUIRE(arr.size() == 3 * CS);
+        for (int i = 0; i < static_cast<int>(3 * CS); ++i)
+            REQUIRE(arr[i] == i);
+        REQUIRE(arr.chunk_count() == 3);
+    }
+}
+
+TEST_CASE("ChunkedArray: reset then reserve then push_back reuses pre-allocated chunks",
+          "[ChunkedArray][reserve][reset][allocate_new_chunk][regression]")
+{
+    // Matches the real crash sequence: reset() to reuse working-set memory,
+    // reserve() to pre-allocate, then fill — all in a hot loop.
+    constexpr size_t CS = 4;
+    ent::ChunkedArray<int, CS> arr;
+
+    // First use: fill exactly one chunk
+    for (int i = 0; i < static_cast<int>(CS); ++i)
+        arr.push_back(i * 10);
+    REQUIRE(arr.size() == CS);
+    REQUIRE(arr.chunk_count() == 1);
+
+    // reset(): elemCount=0, chunk memory retained
+    arr.reset();
+    REQUIRE(arr.size() == 0);
+    REQUIRE(arr.chunk_count() == 1); // chunks[0] still allocated
+
+    // reserve(2*CS): adds chunks[1] — both chunks now pre-allocated
+    arr.reserve(2 * CS);
+    REQUIRE(arr.chunk_count() == 2);
+
+    // Fill past the chunk boundary
+    for (int i = 0; i < static_cast<int>(2 * CS); ++i)
+        arr.push_back(i);
+
+    REQUIRE(arr.size() == 2 * CS);
+    for (int i = 0; i < static_cast<int>(2 * CS); ++i)
+        REQUIRE(arr[i] == i);
+
+    // Must not have grown to 3 chunks
+    REQUIRE(arr.chunk_count() == 2);
+}
+
+TEST_CASE("ChunkedArray: repeated reset+reserve+fill cycles stay coherent",
+          "[ChunkedArray][reserve][reset][allocate_new_chunk][regression][stress]")
+{
+    // Simulates the pathfinding hot loop: reset between iterations, reserve for
+    // the expected working set, then fill. Each cycle must produce correct reads
+    // and must not leak chunks.
+    constexpr size_t CS = 4;
+    ent::ChunkedArray<int, CS> arr;
+
+    for (int cycle = 0; cycle < 5; ++cycle)
+    {
+        arr.reset();
+        arr.reserve(3 * CS);
+
+        for (int i = 0; i < static_cast<int>(3 * CS); ++i)
+            arr.push_back(cycle * 100 + i);
+
+        REQUIRE(arr.size() == 3 * CS);
+        for (int i = 0; i < static_cast<int>(3 * CS); ++i)
+            REQUIRE(arr[i] == cycle * 100 + i);
+
+        // Chunk count must not grow each cycle (3 pre-allocated, none leaked)
+        REQUIRE(arr.chunk_count() == 3);
+    }
+}
