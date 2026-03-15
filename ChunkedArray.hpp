@@ -460,10 +460,11 @@ namespace entable {
         FORCE_INLINE void push_back(const T& value) { emplace_back(value);            }
         FORCE_INLINE void push_back(T&&      value) { emplace_back(std::move(value)); }
 
-        void pop_back() {
+        void pop_back() noexcept(std::is_nothrow_destructible_v<T>) {
             assert(elemCount > 0);
             --elemCount;
-            std::destroy_at(std::addressof((*this)[elemCount]));
+            if constexpr (!std::is_trivially_destructible_v<T>)
+                std::destroy_at(std::addressof((*this)[elemCount]));
             // Fast path: the freed slot and the new write position are in the same
             // chunk, so we can simply step m_writePtr back by one.
             // This holds when the new elemCount is NOT the last slot of its chunk —
@@ -483,7 +484,9 @@ namespace entable {
         // Invalidates any iterator or index pointing to the last element.
         // Intended as the building block for stable-index or sparse-set layers above
         // this class, which can intercept the move to update their own bookkeeping.
-        void swap_remove(size_t idx) {
+        void swap_remove(size_t idx)
+            noexcept(std::is_nothrow_move_assignable_v<T> && std::is_nothrow_destructible_v<T>)
+        {
             assert(idx < elemCount && "swap_remove index out of range");
             if (idx != elemCount - 1)
                 (*this)[idx] = std::move((*this)[elemCount - 1]);
