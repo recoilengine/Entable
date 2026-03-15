@@ -80,22 +80,12 @@ if(ENTABLE_BUILD_TESTS)
   add_executable(chunked_array_tests tests/ChunkedArray_tests.cpp)
   target_link_libraries(chunked_array_tests PRIVATE entable Catch2::Catch2WithMain)
 
-  # Test executable: Catch2 tests for ChunkedArrayRecoil
-  add_executable(chunked_array_recoil_tests tests/ChunkedArrayRecoil_tests.cpp)
-  target_link_libraries(chunked_array_recoil_tests PRIVATE entable Catch2::Catch2WithMain)
-
-  # Test executable: Catch2 tests for ChunkedArrayMerged
-  add_executable(chunked_array_merged_tests tests/ChunkedArrayMerged_tests.cpp)
-  target_link_libraries(chunked_array_merged_tests PRIVATE entable Catch2::Catch2WithMain)
-
   # Test executable: Catch2 tests for Entable Registry
   add_executable(entable_tests tests/Entable_tests.cpp)
   target_link_libraries(entable_tests PRIVATE entable Catch2::Catch2WithMain)
 
   enable_testing()
   add_test(NAME chunked_array_tests COMMAND chunked_array_tests)
-  add_test(NAME chunked_array_recoil_tests COMMAND chunked_array_recoil_tests)
-  add_test(NAME chunked_array_merged_tests COMMAND chunked_array_merged_tests)
   add_test(NAME entable_tests COMMAND entable_tests)
 endif()
 
@@ -109,7 +99,7 @@ if(MSVC)
   )
 
   if(ENTABLE_BUILD_TESTS)
-    list(APPEND NATVIS_TARGETS chunked_array_tests chunked_array_recoil_tests chunked_array_merged_tests entable_tests)
+    list(APPEND NATVIS_TARGETS chunked_array_tests entable_tests)
   endif()
 
   foreach(target ${NATVIS_TARGETS})

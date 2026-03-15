@@ -1488,3 +1488,88 @@ TEST_CASE("ChunkedArray: repeated reset+reserve+fill cycles stay coherent",
         REQUIRE(arr.chunk_count() == 3);
     }
 }
+
+// =============================================================================
+// Regression: get_chunk_span must use live-chunk count, not allocated-chunk count
+//
+// Bug: get_chunk_span() identified the partial (last live) chunk by comparing
+// chunk_idx == chunks.size() - 1. After reserve(), chunks.size() - 1 is the
+// last *allocated* chunk, not the last *live* chunk. This caused two symptoms:
+//
+//   1. The actual last live chunk (which is partial) was NOT detected as special
+//      → returned a full-size span, exposing uninitialized tail slots.
+//   2. Pre-allocated-but-empty chunks beyond the live range were treated as the
+//      "last chunk" → returned a span of 0 by the partial-chunk path rather
+//      than an empty span, but for the wrong reason.
+//
+// Scenario A — partial first chunk, one extra pre-allocated chunk:
+//   CHUNK_SIZE=4, reserve(8) → chunks.size()=2, push 3 → elemCount=3
+//   last live chunk = 0, but chunks.size()-1 = 1
+//   get_chunk_span(0): 0 != 1 → returns {chunk0, CHUNK_SIZE=4}  ← BUG (should be 3)
+//
+// Scenario B — partial second chunk, one extra pre-allocated chunk:
+//   CHUNK_SIZE=4, reserve(12) → chunks.size()=3, push 5 → elemCount=5
+//   last live chunk = 1, but chunks.size()-1 = 2
+//   get_chunk_span(1): 1 != 2 → returns {chunk1, CHUNK_SIZE=4}  ← BUG (should be 1)
+// =============================================================================
+
+TEST_CASE("ChunkedArray: get_chunk_span returns correct size after reserve with surplus chunks",
+          "[ChunkedArray][get_chunk_span][reserve][regression]")
+{
+    constexpr size_t CS = 4;
+
+    SECTION("Partial first chunk, one extra pre-allocated chunk (Scenario A)")
+    {
+        // reserve(2*CS) → chunks.size()=2; push 3 → last live chunk is 0 (partial)
+        // Bug: get_chunk_span(0) returns full CHUNK_SIZE span instead of 3
+        ent::ChunkedArray<int, CS> arr;
+        arr.reserve(2 * CS);
+        REQUIRE(arr.chunk_count() == 2);
+
+        for (int i = 0; i < 3; ++i) arr.push_back(i);
+        REQUIRE(arr.size() == 3);
+
+        auto span0 = arr.get_chunk_span(0);
+        REQUIRE(span0.size() == 3); // must not bleed into the uninitialised tail
+
+        for (size_t i = 0; i < span0.size(); ++i)
+            REQUIRE(span0[static_cast<std::ptrdiff_t>(i)] == static_cast<int>(i));
+
+        // The pre-allocated surplus chunk must appear empty
+        auto span1 = arr.get_chunk_span(1);
+        REQUIRE(span1.empty());
+    }
+
+    SECTION("Partial second chunk, one extra pre-allocated chunk (Scenario B)")
+    {
+        // reserve(3*CS) → chunks.size()=3; push 5 → last live chunk is 1 (partial)
+        // Bug: get_chunk_span(1) returns full CHUNK_SIZE span instead of 1
+        ent::ChunkedArray<int, CS> arr;
+        arr.reserve(3 * CS);
+        REQUIRE(arr.chunk_count() == 3);
+
+        for (int i = 0; i < static_cast<int>(CS) + 1; ++i) arr.push_back(i);
+        REQUIRE(arr.size() == CS + 1);
+
+        auto span0 = arr.get_chunk_span(0);
+        REQUIRE(span0.size() == CS); // chunk 0 is full
+
+        auto span1 = arr.get_chunk_span(1);
+        REQUIRE(span1.size() == 1); // only one element in chunk 1
+
+        auto span2 = arr.get_chunk_span(2);
+        REQUIRE(span2.empty()); // pre-allocated but no live elements
+    }
+
+    SECTION("const overload produces the same correct sizes")
+    {
+        ent::ChunkedArray<int, CS> arr;
+        arr.reserve(3 * CS);
+        for (int i = 0; i < static_cast<int>(CS) + 1; ++i) arr.push_back(i);
+
+        const auto& carr = arr;
+        REQUIRE(carr.get_chunk_span(0).size() == CS);
+        REQUIRE(carr.get_chunk_span(1).size() == 1);
+        REQUIRE(carr.get_chunk_span(2).empty());
+    }
+}
