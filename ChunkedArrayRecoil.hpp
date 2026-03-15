@@ -583,9 +583,12 @@ namespace recoil {
         }
 
         void allocate_new_chunk() {
-            chunks.push_back(make_chunk());
-            m_writePtr = chunks.back().get();
-            m_chunkEnd = m_writePtr + CHUNK_SIZE;
+            const size_t next_chunk = Helper::ChunkIndex(elemCount);
+            if (next_chunk >= chunks.size())
+                chunks.push_back(make_chunk());
+            T* base = chunks[next_chunk].get();
+            m_writePtr = base;
+            m_chunkEnd = base + CHUNK_SIZE;
         }
 
         void destroy_elements(size_t first, size_t last) noexcept {
